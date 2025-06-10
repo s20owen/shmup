@@ -17,6 +17,7 @@ const TILE_SIZE = 64;
 
 export default class Game {
   constructor(canvas, ctx, bulletImage) {
+    this.mode = 'single';
     this.canvas = canvas;
     this.ctx = ctx;
     this.input = new InputManager();
@@ -69,6 +70,7 @@ export default class Game {
     this.enemiesKilled = 0;
     this.bossesKilled = 0;
     this.achievementManager = new AchievementManager(this);
+    this.magnetEnabled = false;
 
   }
 
@@ -82,6 +84,12 @@ export default class Game {
         window.location.reload(); // or implement a proper reset()
       }
     });
+
+    if (this.mode === 'coop') {
+      this.player2 = new Player(WORLD_WIDTH / 2 + 100, WORLD_HEIGHT / 2 + 100, this.player.bulletImage);
+      this.player2.bulletPool = this.bulletPool;
+      this.player2.gameRef = this;
+    }
     
     const loop = () => {
       this.update();
@@ -95,6 +103,13 @@ export default class Game {
     if (this.paused) return;
     this.input.update();
     this.player.update(this.input);
+    if (this.mode === 'coop' && this.player2) {
+      this.player2.update({
+        moveVector: this.input.p2MoveVector,
+        aimVector: { x: 1, y: 0 }, // placeholder or implement p2AimVector
+        shooting: this.input.p2Shooting
+      });
+    }
     this.camera.update();
     this.enemyPool.updateAll();
     this.bulletPool.updateAll();
@@ -102,7 +117,7 @@ export default class Game {
     const enemies = this.enemyPool.getAllActive();
     this.damageNumberPool.updateAll();
     this.powerups = this.powerups.filter(p => p.alive);
-    this.powerups.forEach(p => p.update());
+    this.powerups.forEach(p => p.update(this.player, this.magnetEnabled));
   
     // enemy spawn
     this.waveManager.update();
@@ -187,7 +202,7 @@ export default class Game {
       
             // 🎁 Powerup drops
             if (Math.random() < 0.30) {
-              const types = ['health', 'speed', 'firerate'];
+              const types = ['health', 'speed', 'firerate', 'magnet'];
               const type = types[Math.floor(Math.random() * types.length)];
               this.powerups.push(new Powerup(enemy.x, enemy.y, type));
             }
@@ -301,6 +316,10 @@ export default class Game {
     this.ctx.font = '24px sans-serif';
     this.ctx.textAlign = 'center';
     this.ctx.fillText(`Score: ${this.score}`, this.canvas.width / 2, 30);
+
+    if (this.mode === 'coop' && this.player2) {
+      this.player2.draw(this.ctx);
+    }
     
   }
 
@@ -318,12 +337,15 @@ export default class Game {
             this.player.speedBoosts--;
           }, 5000);
           break;
-        
 
       case 'firerate':
         this.player.shootCooldown = Math.max(1, this.player.shootCooldown - 3);
         setTimeout(() => this.player.shootCooldown += 3, 5000);
         break;
+
+      case 'magnet':
+        this.magnetEnabled = true;
+      break;
 
       case 'weapon-upgrade':
         this.player.upgraded = true;
