@@ -2,11 +2,22 @@ body {
   margin: 0;
   overflow: hidden;
   background: #000;
-  user-select: none;
-  -webkit-user-select: none;
+
 }
 canvas {
   display: block;
+}
+
+body, canvas, #joystick-left, #joystick-right{
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  -ms-touch-action: none;
+}
+
+html, body{
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 .joystick {
